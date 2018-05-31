@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"dbutils"
 	"time"
 )
 
@@ -106,4 +107,67 @@ func ModifyUser(db *sql.DB, user User) {
 	userLog := UserLog{UserID: user.ID, LogDate: time.Now(), Action: "UpdateUser"}
 	CreateUserLog(db, userLog)
 	checkErr(err)
+}
+
+//Load ...
+func (item User) Load(row *sql.Row) {
+	err := row.Scan(&item.ID, &item.Username, &item.Password, &item.Name, &item.IsAdmin, &item.IsActive)
+	dbutils.CheckErr(err)
+}
+
+//Loads ...
+func (item User) Loads(rows *sql.Rows) {
+	err := rows.Scan(&item.ID, &item.Username, &item.Password, &item.Name, &item.IsAdmin, &item.IsActive)
+	dbutils.CheckErr(err)
+}
+
+//GetUsers ..
+func GetUsers(db *sql.DB, sql string) []User {
+	rows, err := db.Query(sql)
+	dbutils.CheckErr(err)
+
+	var users []User
+	for rows.Next() {
+		newUser := User{}
+		newUser.Loads(rows)
+		dbutils.CheckErr(err)
+		users = append(users, newUser)
+	}
+	return users
+}
+
+//GetAllUsers ..
+func GetAllUsers(db *sql.DB) []User {
+	return GetUsers(db, "select id, username, password, name, isadmin, isactive from user")
+}
+
+//GetUserByUsername ..
+func GetUserByUsername(db *sql.DB, user *User) {
+	row := db.QueryRow("select id, username, password, name, isadmin, isactive from user where username = ?", user.Username)
+	user.Load(row)
+}
+
+//GetUserByID ..
+func GetUserByID(db *sql.DB, user *User) {
+	row := db.QueryRow("select id, username, password, name, isadmin, isactive from user where id = ?", user.ID)
+	user.Load(row)
+}
+
+//Update ...
+func (item User) Update(db *sql.DB) {
+	_, err := db.Exec("update user set password = ?, name = ?, isadmin = ?, isactive = ? where id = ?", item.Password, item.Name, item.IsAdmin, item.IsActive, item.ID)
+	dbutils.CheckErr(err)
+}
+
+//Create ...
+func (item User) Create(db *sql.DB) {
+	_, err := db.Exec("insert into user(username, password, name, isadmin, isactive) values (?, ?, ?, ?, ?)", item.Username, item.Password, item.Name, item.IsAdmin, item.IsActive)
+	dbutils.CheckErr(err)
+	GetUserByUsername(db, &item)
+}
+
+//Delete ...
+func (item User) Delete(db *sql.DB) {
+	_, err := db.Exec("delete from user where id = ?", item.ID)
+	dbutils.CheckErr(err)
 }
