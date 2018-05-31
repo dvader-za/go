@@ -1,0 +1,20 @@
+Notes on Avis Vehicle Replacement System
+
+Supervisors / Team Leads mostly do cleanup work, and follow ups.
+Calls come in via a proprietary PABX / email system, and are put into queues (which are managed by Supervisors)
+Calls are captured onto the system by 3rd parties, and edited by agents.  Sometimes the calls are raw emails and pdfs which need to be captured.
+PDF files should be able to be processed automatically.
+Incoming data often needs to be cleaned by the agent.  This should be cleaned / validated automatically.
+When the agent captures the call, it is posted to Wizard, but is not updated again after this, nor is the Wizard data pushed back to AVRS.
+The agent needs to contact the branches for the 1st available car (for collect or deliver) - this info is not pushed to the application.
+SMS data is not automatically recorded in the system
+SMS's often need to be sent out, but this is mostly manual.
+Text to read to customer is printed out, not displayed on the system, with approvals, etc.
+Audit logging needs to be stepped up.
+Attachments are mainly emails, but anything that needs to be saved with the order, this is currently captured in comments.
+Comments need to be viewable by externals.
+Comments should not be used as workflow.
+Comments are often system duplicated - should not do this.
+Status on orders is weird
+The home page with orders is not logical, needs to be cleaned up
+Single search bar
