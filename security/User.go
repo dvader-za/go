@@ -51,13 +51,13 @@ func loadUsers(rows *sql.Rows) []User {
 	return list
 }
 
-//GetAllUsers ...
-func GetAllUsers(db *sql.DB) []User {
-	rows, err := db.Query("select id, username, password, name, isadmin, isactive from user")
-	checkErr(err)
-	defer rows.Close()
-	return loadUsers(rows)
-}
+// //GetAllUsers ...
+// func GetAllUsers(db *sql.DB) []User {
+// 	rows, err := db.Query("select id, username, password, name, isadmin, isactive from user")
+// 	checkErr(err)
+// 	defer rows.Close()
+// 	return loadUsers(rows)
+// }
 
 //GetUser ...
 func GetUser(db *sql.DB, id int) User {
