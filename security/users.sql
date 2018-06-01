@@ -1,9 +1,8 @@
 drop table interaction;
 drop table userlog;
+drop table userrole;
 drop table user;
 drop table role;
-drop table userrole;
-
 
 create table user (
   id integer primary key autoincrement,

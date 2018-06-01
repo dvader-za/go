@@ -2,8 +2,6 @@ package security
 
 import (
 	"database/sql"
-	"dbutils"
-	"fmt"
 	"time"
 )
 
@@ -32,18 +30,33 @@ func appendUser(slice []User, data ...User) []User {
 }
 
 //Create ...
-func (item *User) Create(db *sql.DB) Interaction {
-	fmt.Printf("insert into user(username, password, name, isadmin, isactive) values (?, ?, ?, ?, ?)\n", item.Username, item.Password, item.Name, item.IsAdmin, item.IsActive)
+func (item *User) Create(db *sql.DB, role Role) (Interaction, error) {
+	var interaction Interaction
+	//fmt.Printf("insert into user(username, password, name, isadmin, isactive) values (%s, %s, %s, %t, %t)\n", item.Username, item.Password, item.Name, item.IsAdmin, item.IsActive)
 	_, err := db.Exec("insert into user(username, password, name, isadmin, isactive) values (?, ?, ?, ?, ?)", item.Username, item.Password, item.Name, item.IsAdmin, item.IsActive)
-	dbutils.CheckErr(err)
+	if err != nil {
+		return interaction, err
+	}
 	item.GetByUsername(db)
-	fmt.Printf("insert into user(username, password, name, isadmin, isactive) values (?, ?, ?, ?, ?, ?)\n", item.ID, item.Username, item.Password, item.Name, item.IsAdmin, item.IsActive)
+	//fmt.Printf("insert into user(username, password, name, isadmin, isactive) values (%d, %s, %s, %s, %t, %t)\n", item.ID, item.Username, item.Password, item.Name, item.IsAdmin, item.IsActive)
 	userLog := UserLog{UserID: item.ID, LogDate: time.Now(), Action: "Create"}
-	userLog.Create(db)
-	interaction := Interaction{Key: RandStringBytesMaskImprSrc(10), Action: "Create", UserID: item.ID, ActionDate: time.Now(), IsActive: true, ExpireDate: time.Now().AddDate(0, 0, 1)}
-	interaction.Create(db)
+	err = userLog.Create(db)
+	if err != nil {
+		return interaction, err
+	}
+
+	var userRole = UserRole{UserID: item.ID, RoleID: role.ID}
+	err = userRole.Create(db)
+	if err != nil {
+		return interaction, err
+	}
+	interaction = Interaction{Key: RandStringBytesMaskImprSrc(10), Action: "Create", UserID: item.ID, ActionDate: time.Now(), IsActive: true, ExpireDate: time.Now().AddDate(0, 0, 1)}
+	err = interaction.Create(db)
+	if err != nil {
+		return interaction, err
+	}
 	interaction.GetByKey(db)
-	return interaction
+	return interaction, err
 }
 
 //ForgotPassword ...
@@ -61,18 +74,16 @@ func (item *User) ForgotPassword(db *sql.DB) Interaction {
 
 //LoadFromRow ...
 func (item *User) LoadFromRow(row *sql.Row) error {
-	err := row.Scan(&item.ID, &item.Username, &item.Password, &item.Name, &item.IsAdmin, &item.IsActive)
-	return err
+	return row.Scan(&item.ID, &item.Username, &item.Password, &item.Name, &item.IsAdmin, &item.IsActive)
 }
 
 //LoadFromRows ...
 func (item *User) LoadFromRows(rows *sql.Rows) error {
-	err := rows.Scan(&item.ID, &item.Username, &item.Password, &item.Name, &item.IsAdmin, &item.IsActive)
-	return err
+	return rows.Scan(&item.ID, &item.Username, &item.Password, &item.Name, &item.IsAdmin, &item.IsActive)
 }
 
 //GetUsersRaw ..
-func GetUsersRaw(db *sql.DB, query string, args ...interface{}) []User {
+func GetUsersRaw(db *sql.DB, query string, args ...interface{}) ([]User, error) {
 	var rows *sql.Rows
 	var err error
 	if len(args) > 0 {
@@ -81,58 +92,73 @@ func GetUsersRaw(db *sql.DB, query string, args ...interface{}) []User {
 		rows, err = db.Query(query)
 	}
 
-	dbutils.CheckErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	var list []User
 	for rows.Next() {
 		item := User{}
 		err := item.LoadFromRows(rows)
 		if err != nil {
-			list = append(list, item)
+			break
 		}
 	}
 
-	return list
+	return list, err
 }
 
 //GetAllUsers ..
-func GetAllUsers(db *sql.DB) []User {
+func GetAllUsers(db *sql.DB) ([]User, error) {
 	return GetUsersRaw(db, "select id, username, password, name, isadmin, isactive from user")
 }
 
 //GetByUsername ..
-func (item *User) GetByUsername(db *sql.DB) {
+func (item *User) GetByUsername(db *sql.DB) error {
 	row := db.QueryRow("select id, username, password, name, isadmin, isactive from user where username = ?", item.Username)
-	item.LoadFromRow(row)
-	fmt.Printf("\nid %d username %s\n", item.ID, item.Username)
+	return item.LoadFromRow(row)
 }
 
 //Get ..
-func (item *User) Get(db *sql.DB) {
+func (item *User) Get(db *sql.DB) error {
 	row := db.QueryRow("select id, username, password, name, isadmin, isactive from user where id = ?", item.ID)
-	item.LoadFromRow(row)
+	return item.LoadFromRow(row)
 }
 
 //Update ...
-func (item User) Update(db *sql.DB) {
+func (item User) Update(db *sql.DB) error {
 	_, err := db.Exec("update user set password = ?, name = ?, isadmin = ?, isactive = ? where id = ?", item.Password, item.Name, item.IsAdmin, item.IsActive, item.ID)
-	dbutils.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	userLog := UserLog{UserID: item.ID, LogDate: time.Now(), Action: "Update"}
-	userLog.Create(db)
+	return userLog.Create(db)
 }
 
 //Delete ...
-func (item User) Delete(db *sql.DB) {
+func (item User) Delete(db *sql.DB) error {
 	_, err := db.Exec("delete from user where id = ?", item.ID)
-	dbutils.CheckErr(err)
+	return err
 }
 
 //GetRoles ...
-func (item User) GetRoles(db *sql.DB) []Role {
+func (item User) GetRoles(db *sql.DB) ([]Role, error) {
 	return GetRolesForUser(db, item)
 }
 
 //GetLogs ...
-func (item User) GetLogs(db *sql.DB) []UserLog {
+func (item User) GetLogs(db *sql.DB) ([]UserLog, error) {
 	return GetUserLogsForUser(db, item)
+}
+
+//DeleteLogs ...
+func (item *User) DeleteLogs(db *sql.DB) error {
+	_, err := db.Exec("delete from userlog where userid = ?", item.ID)
+	return err
+}
+
+//DeleteRoles ...
+func (item *User) DeleteRoles(db *sql.DB) error {
+	_, err := db.Exec("delete from userrole where userid = ?", item.ID)
+	return err
 }

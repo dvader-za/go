@@ -2,7 +2,6 @@ package security
 
 import (
 	"database/sql"
-	"dbutils"
 	"time"
 )
 
@@ -28,65 +27,71 @@ func appendRole(slice []Role, data ...Role) []Role {
 }
 
 //LoadFromRow ...
-func (item *Role) LoadFromRow(row *sql.Row) {
-	err := row.Scan(&item.ID, &item.Description, &item.Data)
-	dbutils.CheckErr(err)
+func (item *Role) LoadFromRow(row *sql.Row) error {
+	return row.Scan(&item.ID, &item.Description, &item.Data)
 }
 
 //LoadFromRows ...
-func (item *Role) LoadFromRows(rows *sql.Rows) {
-	err := rows.Scan(&item.ID, &item.Description, &item.Data)
-	dbutils.CheckErr(err)
+func (item *Role) LoadFromRows(rows *sql.Rows) error {
+	return rows.Scan(&item.ID, &item.Description, &item.Data)
 }
 
 //GetRoles ..
-func GetRoles(db *sql.DB, sql string, args ...interface{}) []Role {
-	rows, err := db.Query(sql, args)
-	dbutils.CheckErr(err)
-
+func GetRoles(db *sql.DB, sql string, args ...interface{}) ([]Role, error) {
 	var list []Role
+	rows, err := db.Query(sql, args)
+	if err != nil {
+		return nil, err
+	}
+
 	for rows.Next() {
 		item := Role{}
 		item.LoadFromRows(rows)
-		dbutils.CheckErr(err)
+		if err != nil {
+			break
+		}
 		list = append(list, item)
 	}
-	return list
+	return list, err
 }
 
 //GetAllRoles ..
-func GetAllRoles(db *sql.DB) []Role {
+func GetAllRoles(db *sql.DB) ([]Role, error) {
 	return GetRoles(db, "select id, description, data from role")
 }
 
 //Create ...
-func (item *Role) Create(db *sql.DB) {
+func (item *Role) Create(db *sql.DB) error {
 	_, err := db.Exec("insert into role(description, data) values (?, ?)", item.Description, item.Data)
-	dbutils.CheckErr(err)
-	item.GetByDescription(db)
+	if err != nil {
+		return err
+	}
+	return item.GetByDescription(db)
 }
 
 //Update ...
-func (item Role) Update(db *sql.DB) {
+func (item Role) Update(db *sql.DB) error {
 	_, err := db.Exec("update role set description = ?, data = ? where id = ?", item.Description, item.Data, item.ID)
-	dbutils.CheckErr(err)
+	if err != nil {
+		return err
+	}
 	userLog := UserLog{UserID: item.ID, LogDate: time.Now(), Action: "Update"}
-	userLog.Create(db)
+	return userLog.Create(db)
 }
 
 //Delete ...
-func (item Role) Delete(db *sql.DB) {
+func (item Role) Delete(db *sql.DB) error {
 	_, err := db.Exec("delete from role where id = ?", item.ID)
-	dbutils.CheckErr(err)
+	return err
 }
 
 //GetRolesForUser ...
-func GetRolesForUser(db *sql.DB, user User) []Role {
+func GetRolesForUser(db *sql.DB, user User) ([]Role, error) {
 	return GetRoles(db, "select r.id, r.description, r.data from userrole ur inner join role r on ur.roleid = r.id where ur.userid = ?", user.ID)
 }
 
 //GetByDescription ..
-func (item *Role) GetByDescription(db *sql.DB) {
+func (item *Role) GetByDescription(db *sql.DB) error {
 	row := db.QueryRow("select id, description, data from role where description = ?", item.Description)
-	item.LoadFromRow(row)
+	return item.LoadFromRow(row)
 }

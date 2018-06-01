@@ -16,7 +16,7 @@ type configuration struct {
 	DbPath string
 }
 
-func main() {
+func tmain() {
 	args := os.Args
 
 	conf := configuration{}
@@ -53,10 +53,13 @@ func main() {
 		fmt.Printf("User %d %s %s\n", u.ID, u.Username, u.Name)
 	}
 
-	user := security.User{Username: "bill"}
-	user.GetByUsername(db)
-	interaction := user.ForgotPassword(db)
+	// user := security.User{Username: "bill"}
+	// user.GetByUsername(db)
+	// interaction := user.ForgotPassword(db)
 
-	fmt.Printf("%s\n", interaction.Key)
+	// fmt.Printf("%s\n", interaction.Key)
+
+	//	key := "UuxTfqqceb"
+	//	user := security.User{key}
 
 }

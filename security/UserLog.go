@@ -2,7 +2,6 @@ package security
 
 import (
 	"database/sql"
-	"dbutils"
 	"time"
 )
 
@@ -30,44 +29,46 @@ func appendUserLog(slice []UserLog, data ...UserLog) []UserLog {
 }
 
 //LoadFromRow ...
-func (item *UserLog) LoadFromRow(row *sql.Row) {
-	err := row.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
-	dbutils.CheckErr(err)
+func (item *UserLog) LoadFromRow(row *sql.Row) error {
+	return row.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
 }
 
 //LoadFromRows ...
-func (item *UserLog) LoadFromRows(rows *sql.Rows) {
-	err := rows.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
-	dbutils.CheckErr(err)
+func (item *UserLog) LoadFromRows(rows *sql.Rows) error {
+	return rows.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
 }
 
 //GetUserLogsRaw ..
-func GetUserLogsRaw(db *sql.DB, sql string, args ...interface{}) []UserLog {
+func GetUserLogsRaw(db *sql.DB, sql string, args ...interface{}) ([]UserLog, error) {
 	rows, err := db.Query(sql, args)
-	dbutils.CheckErr(err)
+	if err != nil {
+		return nil, err
+	}
 
 	var list []UserLog
 	for rows.Next() {
 		item := UserLog{}
 		item.LoadFromRows(rows)
-		dbutils.CheckErr(err)
+		if err != nil {
+			break
+		}
 		list = append(list, item)
 	}
-	return list
+	return list, err
 }
 
 //Create ...
-func (item UserLog) Create(db *sql.DB) {
+func (item UserLog) Create(db *sql.DB) error {
 	_, err := db.Exec("insert into userlog(userid, logdate, action, data) values (?, ?, ?, ?)", item.UserID, item.LogDate, item.Action, item.Data)
-	dbutils.CheckErr(err)
+	return err
 }
 
 //GetAll ...
-func GetAll(db *sql.DB) []UserLog {
+func GetAll(db *sql.DB) ([]UserLog, error) {
 	return GetUserLogsRaw(db, "select id, userid, logdate, action, data from userlog")
 }
 
 //GetUserLogsForUser ...
-func GetUserLogsForUser(db *sql.DB, user User) []UserLog {
+func GetUserLogsForUser(db *sql.DB, user User) ([]UserLog, error) {
 	return GetUserLogsRaw(db, "select id, userid, logdate, action, data from userlog where userid = ?", user.ID)
 }
