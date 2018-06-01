@@ -1,6 +1,13 @@
+drop table interaction;
+drop table userlog;
+drop table user;
+drop table role;
+drop table userrole;
+
+
 create table user (
   id integer primary key autoincrement,
-  username text not null,
+  username text not null unique,
   password test null,
   name text not null,
   isadmin boolean not null,
@@ -18,14 +25,16 @@ create table userlog (
 
 create table role (
   id integer primary key autoincrement,
-  description text not null
+  description text not null unique,
+  data text null
 );
 
 create table userrole (
   userid integer not null,
   roleid integer not null,
-  foreign key(userid) references user(id)
-  foreign key(roleid) references role(id)
+  foreign key(userid) references user(id),
+  foreign key(roleid) references role(id),
+  primary key(userid,roleid)
 );
 
 create table interaction (
@@ -38,3 +47,19 @@ create table interaction (
    expiredate datetime not null,
    foreign key(userid) references user(id)
 );
+
+insert into user(username, password, name, isadmin, isactive) values ('bill', '', 'Bill', 0, 1);
+insert into user(username, password, name, isadmin, isactive) values ('bob', '', 'Bob', 0, 1);
+insert into user(username, password, name, isadmin, isactive) values ('tim', '', 'Tim', 0, 1);
+insert into user(username, password, name, isadmin, isactive) values ('ted', '', 'Ted', 0, 1);
+
+insert into role(description, data) values ('Normal', '');
+insert into role(description, data) values ('Administrator', '');
+
+insert into userrole(userid, roleid) values (1, 1);
+insert into userrole(userid, roleid) values (1, 2);
+insert into userrole(userid, roleid) values (2, 1);
+insert into userrole(userid, roleid) values (3, 1);
+insert into userrole(userid, roleid) values (4, 1);
+
+

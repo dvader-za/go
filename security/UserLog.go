@@ -1,7 +1,8 @@
-package main
+package security
 
 import (
 	"database/sql"
+	"dbutils"
 	"time"
 )
 
@@ -28,24 +29,45 @@ func appendUserLog(slice []UserLog, data ...UserLog) []UserLog {
 	return slice
 }
 
-func (item *UserLog) load(rows *sql.Rows) {
-	err := rows.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
-	checkErr(err)
+//LoadFromRow ...
+func (item *UserLog) LoadFromRow(row *sql.Row) {
+	err := row.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
+	dbutils.CheckErr(err)
 }
 
-//LoadUserLogs ...
-func LoadUserLogs(rows *sql.Rows) []UserLog {
-	var list []UserLog
+//LoadFromRows ...
+func (item *UserLog) LoadFromRows(rows *sql.Rows) {
+	err := rows.Scan(&item.ID, &item.UserID, &item.LogDate, &item.Action, &item.Data)
+	dbutils.CheckErr(err)
+}
 
+//GetUserLogsRaw ..
+func GetUserLogsRaw(db *sql.DB, sql string, args ...interface{}) []UserLog {
+	rows, err := db.Query(sql, args)
+	dbutils.CheckErr(err)
+
+	var list []UserLog
 	for rows.Next() {
-		var newObject UserLog
-		newObject.load(rows)
-		list = appendUserLog(list, newObject)
+		item := UserLog{}
+		item.LoadFromRows(rows)
+		dbutils.CheckErr(err)
+		list = append(list, item)
 	}
 	return list
 }
 
-//CreateUserLog ...
-func CreateUserLog(db *sql.DB, userLog UserLog) UserLog {
-	return userLog
+//Create ...
+func (item UserLog) Create(db *sql.DB) {
+	_, err := db.Exec("insert into userlog(userid, logdate, action, data) values (?, ?, ?, ?)", item.UserID, item.LogDate, item.Action, item.Data)
+	dbutils.CheckErr(err)
+}
+
+//GetAll ...
+func GetAll(db *sql.DB) []UserLog {
+	return GetUserLogsRaw(db, "select id, userid, logdate, action, data from userlog")
+}
+
+//GetUserLogsForUser ...
+func GetUserLogsForUser(db *sql.DB, user User) []UserLog {
+	return GetUserLogsRaw(db, "select id, userid, logdate, action, data from userlog where userid = ?", user.ID)
 }

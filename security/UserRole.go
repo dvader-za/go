@@ -1,6 +1,10 @@
-package main
+package security
 
-import "database/sql"
+import (
+	"database/sql"
+	"dbutils"
+	"time"
+)
 
 //UserRole ...
 type UserRole struct {
@@ -22,9 +26,40 @@ func appendUserRole(slice []UserRole, data ...UserRole) []UserRole {
 	return slice
 }
 
-func (item *UserRole) load(rows *sql.Rows) {
+//LoadFromRow ...
+func (item *UserRole) LoadFromRow(row *sql.Row) error {
+	err := row.Scan(&item.UserID, &item.RoleID)
+	return err
+}
+
+//LoadFromRows ...
+func (item *UserRole) LoadFromRows(rows *sql.Rows) error {
 	err := rows.Scan(&item.UserID, &item.RoleID)
-	checkErr(err)
+	return err
+}
+
+//GetUserRolesRaw ..
+func GetUserRolesRaw(db *sql.DB, query string, args ...interface{}) []UserRole {
+	var rows *sql.Rows
+	var err error
+	if len(args) > 0 {
+		rows, err = db.Query(query, args)
+	} else {
+		rows, err = db.Query(query)
+	}
+
+	dbutils.CheckErr(err)
+
+	var list []UserRole
+	for rows.Next() {
+		item := UserRole{}
+		err := item.LoadFromRows(rows)
+		if err != nil {
+			list = append(list, item)
+		}
+	}
+
+	return list
 }
 
 //LoadUserRoles ...
@@ -32,14 +67,23 @@ func LoadUserRoles(rows *sql.Rows) []UserRole {
 	var list []UserRole
 
 	for rows.Next() {
-		var newObject UserRole
-		newObject.load(rows)
-		list = appendUserRole(list, newObject)
+		var item UserRole
+		item.LoadFromRows(rows)
+		list = appendUserRole(list, item)
 	}
 	return list
 }
 
-//CreateUserRole ...
-func CreateUserRole(db *sql.DB, userRole UserRole) UserRole {
-	return userRole
+//Create ...
+func (item *UserRole) Create(db *sql.DB) {
+	_, err := db.Exec("insert into userrole(userid, roleid) values (?, ?)", item.UserID, item.RoleID)
+	dbutils.CheckErr(err)
+	userLog := UserLog{UserID: item.UserID, LogDate: time.Now(), Action: "RoleLink"}
+	userLog.Create(db)
+}
+
+//Delete ...
+func (item UserRole) Delete(db *sql.DB) {
+	_, err := db.Exec("delete from userrole where userid = ? and roleid = ?", item.UserID, item.RoleID)
+	dbutils.CheckErr(err)
 }

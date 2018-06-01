@@ -1,7 +1,8 @@
-package main
+package security
 
 import (
 	"database/sql"
+	"dbutils"
 	"time"
 )
 
@@ -30,37 +31,56 @@ func appendInteraction(slice []Interaction, data ...Interaction) []Interaction {
 	return slice
 }
 
-func (item *Interaction) load(rows *sql.Rows) {
-	err := rows.Scan(&item.ID, &item.Key, &item.Action, &item.UserID, &item.ActionDate, &item.IsActive, &item.ExpireDate)
-	checkErr(err)
-}
-
-func (item *Interaction) loadRow(row *sql.Row) {
+//LoadFromRow ...
+func (item *Interaction) LoadFromRow(row *sql.Row) error {
 	err := row.Scan(&item.ID, &item.Key, &item.Action, &item.UserID, &item.ActionDate, &item.IsActive, &item.ExpireDate)
-	checkErr(err)
+	return err
 }
 
-//LoadInteractions ...
-func LoadInteractions(rows *sql.Rows) []Interaction {
-	var list []Interaction
+//LoadFromRows ...
+func (item *Interaction) LoadFromRows(rows *sql.Rows) error {
+	err := rows.Scan(&item.ID, &item.Key, &item.Action, &item.UserID, &item.ActionDate, &item.IsActive, &item.ExpireDate)
+	return err
+}
 
-	for rows.Next() {
-		var newObject Interaction
-		newObject.load(rows)
-		list = appendInteraction(list, newObject)
+//GetInteractionsRaw ..
+func GetInteractionsRaw(db *sql.DB, query string, args ...interface{}) []Interaction {
+	var rows *sql.Rows
+	var err error
+	if len(args) > 0 {
+		rows, err = db.Query(query, args)
+	} else {
+		rows, err = db.Query(query)
 	}
+
+	dbutils.CheckErr(err)
+
+	var list []Interaction
+	for rows.Next() {
+		item := Interaction{}
+		err := item.LoadFromRows(rows)
+		if err != nil {
+			list = append(list, item)
+		}
+	}
+
 	return list
 }
 
-//CreateInteraction ...
-func CreateInteraction(db *sql.DB, interaction Interaction) Interaction {
-	return interaction
+//Create ...
+func (item Interaction) Create(db *sql.DB) {
+	_, err := db.Exec("insert into interaction(key, action, userid, actiondate, isactive, expiredate) values (?, ?, ?, ?, ?, ?)", item.Key, item.Action, item.UserID, item.ActionDate, item.IsActive, item.ExpireDate)
+	dbutils.CheckErr(err)
 }
 
-//GetInteractionByKey ...
-func GetInteractionByKey(db *sql.DB, key string) Interaction {
-	row := db.QueryRow("select id, key, action, userid, actiondate, isactive, expiredate from interaction where key = ?", key)
-	var newObject Interaction
-	newObject.loadRow(row)
-	return newObject
+//GetByKey ...
+func (item *Interaction) GetByKey(db *sql.DB) {
+	row := db.QueryRow("select id, key, action, userid, actiondate, isactive, expiredate from interaction where key = ?", item.Key)
+	item.LoadFromRow(row)
+}
+
+//Update ...
+func (item Interaction) Update(db *sql.DB) {
+	_, err := db.Exec("update interaction set action = ?, userid = ?, actiondate = ?, isactive = ?, expiredate = ? where id = ?", item.Key, item.Action, item.UserID, item.ActionDate, item.IsActive, item.ExpireDate, item.ID)
+	dbutils.CheckErr(err)
 }
